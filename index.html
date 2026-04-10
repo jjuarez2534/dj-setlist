@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#FF5500">
+<title>DJ Setlist Loader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sc: #FF5500;
+    --sc-dark: #cc4400;
+    --sc-light: #fff3ee;
+    --bg: #0a0a0a;
+    --bg2: #141414;
+    --bg3: #1e1e1e;
+    --bg4: #282828;
+    --text: #f0f0f0;
+    --text2: #999;
+    --text3: #555;
+    --border: #2a2a2a;
+    --success: #1db954;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+    overflow-x: hidden;
+  }
+
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  .header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0 0;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo-icon {
+    width: 28px;
+    height: 28px;
+    background: var(--sc);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-icon svg { width: 16px; height: 16px; fill: white; }
+
+  .logo-text {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  .settings-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .settings-btn:hover { background: var(--bg4); }
+  .settings-btn svg { width: 15px; height: 15px; stroke: var(--text2); fill: none; stroke-width: 1.5; }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-top: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 4px;
+    font-size: 12px;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s;
+    position: relative;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .tab.active { color: var(--sc); border-bottom-color: var(--sc); }
+
+  .badge {
+    background: var(--sc);
+    color: white;
+    border-radius: 10px;
+    font-size: 9px;
+    padding: 1px 5px;
+    margin-left: 4px;
+    font-weight: 500;
+  }
+
+  .screen { display: none; flex: 1; padding: 16px; flex-direction: column; gap: 12px; }
+  .screen.active { display: flex; }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+
+  .card-label {
+    font-size: 10px;
+    color: var(--text3);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+
+  .upload-zone {
+    border: 1.5px dashed var(--sc);
+    border-radius: var(--radius-sm);
+    padding: 24px 16px;
+    text-align: center;
+    background: rgba(255,85,0,0.04);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .upload-zone:hover { background: rgba(255,85,0,0.08); }
+
+  .upload-zone.drag-over { background: rgba(255,85,0,0.12); border-style: solid; }
+
+  .upload-icon-wrap {
+    width: 40px;
+    height: 40px;
+    background: var(--sc);
+    border-radius: 10px;
+    margin: 0 auto 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .upload-icon-wrap svg { width: 20px; height: 20px; fill: white; }
+
+  .upload-zone p { font-size: 13px; font-weight: 500; color: var(--sc); margin-bottom: 4px; }
+  .upload-zone span { font-size: 11px; color: var(--text3); }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  textarea {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 10px 12px;
+    resize: none;
+    min-height: 100px;
+    line-height: 1.6;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  textarea:focus { border-color: var(--sc); }
+  textarea::placeholder { color: var(--text3); }
+
+  .btn {
+    width: 100%;
+    padding: 13px;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s, transform 0.1s;
+    letter-spacing: -0.2px;
+  }
+
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-primary { background: var(--sc); color: white; }
+  .btn-primary:hover { background: var(--sc-dark); }
+  .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+
+  .preview-img {
+    width: 100%;
+    border-radius: var(--radius-sm);
+    max-height: 160px;
+    object-fit: cover;
+    margin-top: 10px;
+    display: none;
+  }
+
+  .track-list { display: flex; flex-direction: column; gap: 2px; }
+
+  .track-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .track-item:last-child { border-bottom: none; }
+
+  .track-num {
+    width: 22px;
+    height: 22px;
+    background: var(--bg3);
+    border-radius: 50%;
+    font-size: 10px;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .track-info { flex: 1; min-width: 0; }
+  .track-info input {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    width: 100%;
+    outline: none;
+    padding: 0;
+  }
+  .track-info input:focus { color: var(--sc); }
+  .track-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+  .track-del {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(239,68,68,0.1);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+
+  .track-del:hover { background: rgba(239,68,68,0.2); }
+  .track-del svg { width: 12px; height: 12px; stroke: var(--danger); fill: none; stroke-width: 2; }
+
+  .match-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .match-item:last-child { border-bottom: none; }
+
+  .match-art {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    background: var(--bg3);
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .match-art img { width: 100%; height: 100%; object-fit: cover; }
+  .match-art svg { width: 18px; height: 18px; fill: var(--text3); }
+
+  .match-info { flex: 1; min-width: 0; }
+  .match-title { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .match-artist { font-size: 11px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .match-plays { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+  .match-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .status-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+  }
+
+  .status-dot.found { background: rgba(29,185,84,0.15); color: var(--success); }
+  .status-dot.swap { background: rgba(245,158,11,0.15); color: var(--warn); cursor: pointer; }
+  .status-dot.notfound { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+  .match-searching { font-size: 11px; color: var(--text3); font-style: italic; }
+
+  .playlist-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--bg3);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .playlist-row:hover { border-color: var(--sc); }
+
+  select {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  select:focus { border-color: var(--sc); }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .stat {
+    background: var(--bg3);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    text-align: center;
+  }
+
+  .stat-num { font-size: 20px; font-weight: 500; color: var(--text); }
+  .stat-label { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+  .stat-num.green { color: var(--success); }
+  .stat-num.amber { color: var(--warn); }
+  .stat-num.red { color: var(--danger); }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--bg4);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 1000;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    white-space: nowrap;
+    max-width: 90vw;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { border-color: var(--success); color: var(--success); }
+  .toast.error { border-color: var(--danger); color: var(--danger); }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,85,0,0.2);
+    border-top-color: var(--sc);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--text3);
+    font-size: 13px;
+  }
+
+  .empty-state svg { width: 36px; height: 36px; stroke: var(--text3); fill: none; stroke-width: 1.2; margin-bottom: 10px; }
+
+  .settings-panel {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    align-items: flex-end;
+  }
+
+  .settings-panel.open { display: flex; }
+
+  .settings-sheet {
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 16px 32px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  .settings-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+
+  .settings-title { font-size: 16px; font-weight: 500; margin-bottom: 20px; color: var(--text); }
+
+  .field { margin-bottom: 14px; }
+  .field label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 6px; }
+
+  input[type="text"], input[type="password"] {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input[type="text"]:focus, input[type="password"]:focus { border-color: var(--sc); }
+
+  .field-help { font-size: 11px; color: var(--text3); margin-top: 5px; line-height: 1.5; }
+
+  .how-to {
+    background: var(--bg3);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    margin-top: 16px;
+    border-left: 3px solid var(--sc);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .how-to p { font-size: 12px; color: var(--text2); line-height: 1.7; }
+  .how-to strong { color: var(--sc); font-weight: 500; }
+
+  .success-screen {
+    text-align: center;
+    padding: 40px 16px;
+  }
+
+  .success-icon {
+    width: 64px;
+    height: 64px;
+    background: rgba(29,185,84,0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+  }
+
+  .success-icon svg { width: 32px; height: 32px; stroke: var(--success); fill: none; stroke-width: 2; }
+  .success-screen h2 { font-size: 20px; font-weight: 500; margin-bottom: 8px; }
+  .success-screen p { font-size: 14px; color: var(--text2); line-height: 1.6; }
+
+  .sc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--sc);
+    color: white;
+    border-radius: var(--radius-sm);
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    margin-top: 16px;
+  }
+
+  .progress-bar-wrap {
+    background: var(--bg3);
+    border-radius: 4px;
+    height: 4px;
+    margin: 8px 0;
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%;
+    background: var(--sc);
+    border-radius: 4px;
+    transition: width 0.3s;
+    width: 0%;
+  }
+
+  .no-creds-banner {
+    background: rgba(245,158,11,0.08);
+    border: 1px solid rgba(245,158,11,0.2);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-size: 12px;
+    color: var(--warn);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .no-creds-banner svg { width: 16px; height: 16px; stroke: var(--warn); fill: none; stroke-width: 2; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13M9 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm12-2c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z"/></svg>
+        </div>
+        <span class="logo-text">DJ Setlist Loader</span>
+      </div>
+      <button class="settings-btn" onclick="openSettings()">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(0)" id="tab0">Input</div>
+      <div class="tab" onclick="switchTab(1)" id="tab1">Tracks <span class="badge" id="track-badge" style="display:none">0</span></div>
+      <div class="tab" onclick="switchTab(2)" id="tab2">Add to Playlist</div>
+    </div>
+  </div>
+
+  <div class="screen active" id="screen0">
+    <div id="no-creds-banner" class="no-creds-banner" onclick="openSettings()" style="display:none">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Setup required — tap to add your SoundCloud credentials
+    </div>
+
+    <div class="card">
+      <div class="card-label">Upload screenshot</div>
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+        <div class="upload-icon-wrap">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+        </div>
+        <p>Tap to upload screenshot</p>
+        <span>Supports photos from gallery, screenshots, any image</span>
+        <img id="preview-img" class="preview-img" alt="preview">
+      </div>
+      <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFileUpload(event)">
+    </div>
+
+    <div class="divider">or paste text</div>
+
+    <div class="card">
+      <div class="card-label">Paste setlist text</div>
+      <textarea id="setlist-text" placeholder="Paste any format — numbered lists, messy text, artist - track, timestamps, anything..."></textarea>
+    </div>
+
+    <button class="btn btn-primary" id="parse-btn" onclick="parseSetlist()">Parse Setlist</button>
+  </div>
+
+  <div class="screen" id="screen1">
+    <div class="card" id="track-stats-card" style="display:none">
+      <div class="stats-row">
+        <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Found</div></div>
+        <div class="stat"><div class="stat-num green" id="stat-matched">0</div><div class="stat-label">Matched</div></div>
+        <div class="stat"><div class="stat-num amber" id="stat-pending">0</div><div class="stat-label">Pending</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Extracted tracks — tap name to edit, X to remove</div>
+      <div class="track-list" id="track-list">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13M9 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm12-2c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z"/></svg>
+          <p>No tracks yet — parse a setlist first</p>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="search-btn" onclick="searchAllTracks()" style="display:none">Search SoundCloud for all tracks</button>
+  </div>
+
+  <div class="screen" id="screen2">
+    <div class="card" id="match-stats-card">
+      <div class="stats-row">
+        <div class="stat"><div class="stat-num green" id="mstat-found">0</div><div class="stat-label">Found</div></div>
+        <div class="stat"><div class="stat-num amber" id="mstat-review">0</div><div class="stat-label">Review</div></div>
+        <div class="stat"><div class="stat-num red" id="mstat-missing">0</div><div class="stat-label">Not found</div></div>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="search-progress"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">SoundCloud matches — tap ⇄ to swap result</div>
+      <div class="track-list" id="match-list">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <p>Search SoundCloud from the Tracks tab first</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="playlist-card" style="display:none">
+      <div class="card-label">Add to playlist</div>
+      <select id="playlist-select">
+        <option value="">Loading your playlists...</option>
+      </select>
+      <button class="btn btn-primary" style="margin-top:10px" id="add-btn" onclick="addToPlaylist()">Add all matched tracks to playlist</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="settings-panel" id="settings-panel" onclick="closeSettingsOutside(event)">
+  <div class="settings-sheet">
+    <div class="settings-handle"></div>
+    <div class="settings-title">Setup credentials</div>
+
+    <div class="field">
+      <label>SoundCloud Client ID</label>
+      <input type="password" id="cred-client-id" placeholder="Your client_id from network tab">
+      <div class="field-help">Found in any SoundCloud API request URL: ?client_id=XXXXX</div>
+    </div>
+
+    <div class="field">
+      <label>OAuth Token</label>
+      <input type="password" id="cred-oauth" placeholder="Your OAuth token">
+      <div class="field-help">Found in request headers: Authorization: OAuth XXXXX</div>
+    </div>
+
+    <div class="field">
+      <label>Claude API Key</label>
+      <input type="password" id="cred-claude" placeholder="sk-ant-...">
+      <div class="field-help">From console.anthropic.com — used to read screenshots and parse messy text</div>
+    </div>
+
+    <div class="how-to">
+      <p>
+        <strong>How to get Client ID + OAuth token:</strong><br>
+        1. Open soundcloud.com in Chrome on your laptop<br>
+        2. Press F12 → Network tab<br>
+        3. Play any track<br>
+        4. Filter by "api-v2" — click any result<br>
+        5. Copy client_id from the URL<br>
+        6. Copy OAuth value from Request Headers
+      </p>
+    </div>
+
+    <button class="btn btn-primary" style="margin-top:16px" onclick="saveCredentials()">Save credentials</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeSettings()">Cancel</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PROXY = 'https://white-cell-c418.jjuarez2534.workers.dev';
+
+function scFetch(scUrl, opts = {}) {
+  const { oauth, clientId } = getCreds();
+  const proxied = `${PROXY}?url=${encodeURIComponent(scUrl)}`;
+  const headers = { 'Content-Type': 'application/json' };
+  if (oauth) headers['X-SC-Auth'] = `OAuth ${oauth}`;
+  return fetch(proxied, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
+}
+
+const STATE = {
+  tracks: [],
+  matches: {},
+  playlists: [],
+  searching: false
+};
+
+function getCreds() {
+  return {
+    clientId: localStorage.getItem('sc_client_id') || '',
+    oauth: localStorage.getItem('sc_oauth') || '',
+    claude: localStorage.getItem('claude_key') || ''
+  };
+}
+
+function hasCreds() {
+  const c = getCreds();
+  return c.clientId && c.oauth;
+}
+
+function switchTab(n) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===n));
+  document.querySelectorAll('.screen').forEach((s,i) => s.classList.toggle('active', i===n));
+  if (n === 2 && hasCreds() && STATE.playlists.length === 0) loadPlaylists();
+}
+
+function showToast(msg, type='', dur=3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' '+type : '');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function openSettings() {
+  const c = getCreds();
+  document.getElementById('cred-client-id').value = c.clientId;
+  document.getElementById('cred-oauth').value = c.oauth;
+  document.getElementById('cred-claude').value = c.claude;
+  document.getElementById('settings-panel').classList.add('open');
+}
+
+function closeSettings() {
+  document.getElementById('settings-panel').classList.remove('open');
+}
+
+function closeSettingsOutside(e) {
+  if (e.target === document.getElementById('settings-panel')) closeSettings();
+}
+
+function saveCredentials() {
+  const clientId = document.getElementById('cred-client-id').value.trim();
+  const oauth = document.getElementById('cred-oauth').value.trim();
+  const claude = document.getElementById('cred-claude').value.trim();
+  if (!clientId || !oauth) { showToast('Client ID and OAuth token are required', 'error'); return; }
+  localStorage.setItem('sc_client_id', clientId);
+  localStorage.setItem('sc_oauth', oauth.replace('OAuth ', ''));
+  if (claude) localStorage.setItem('claude_key', claude);
+  closeSettings();
+  showToast('Credentials saved', 'success');
+  checkCredsUI();
+}
+
+function checkCredsUI() {
+  const banner = document.getElementById('no-creds-banner');
+  banner.style.display = hasCreds() ? 'none' : 'flex';
+}
+
+function handleFileUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById('preview-img');
+    img.src = ev.target.result;
+    img.style.display = 'block';
+    document.getElementById('setlist-text').value = '';
+    window._uploadedImageData = ev.target.result.split(',')[1];
+    window._uploadedMime = file.type;
+    showToast('Image loaded — tap Parse Setlist');
+  };
+  reader.readAsDataURL(file);
+}
+
+async function parseSetlist() {
+  const btn = document.getElementById('parse-btn');
+  const text = document.getElementById('setlist-text').value.trim();
+  const hasImage = !!window._uploadedImageData;
+
+  if (!text && !hasImage) { showToast('Add a screenshot or paste some text first', 'error'); return; }
+
+  const claude = getCreds().claude;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Parsing...';
+
+  try {
+    let tracks = [];
+
+    if (claude) {
+      const messages = [];
+      const content = [];
+
+      if (hasImage) {
+        content.push({ type: 'image', source: { type: 'base64', media_type: window._uploadedMime || 'image/png', data: window._uploadedImageData }});
+      }
+
+      const prompt = hasImage
+        ? 'This is a DJ setlist image. Extract every track. Return ONLY a JSON array of strings in format "Artist - Track Title". No extra text, no markdown, just the raw JSON array.'
+        : `Extract all tracks from this DJ setlist text. Return ONLY a JSON array of strings in format "Artist - Track Title". Clean up formatting. No extra text, no markdown, just the raw JSON array.\n\nSetlist:\n${text}`;
+
+      content.push({ type: 'text', text: prompt });
+      messages.push({ role: 'user', content });
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': claude, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages })
+      });
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      const raw = data.content[0].text.trim().replace(/```json|```/g, '').trim();
+      tracks = JSON.parse(raw);
+    } else {
+      if (hasImage) {
+        showToast('Add Claude API key in settings to read screenshots', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Parse Setlist';
+        return;
+      }
+      tracks = parseTextFallback(text);
+    }
+
+    if (!tracks || tracks.length === 0) throw new Error('No tracks found');
+
+    STATE.tracks = tracks.map((t, i) => ({ id: i, name: t, original: t }));
+    STATE.matches = {};
+    renderTracks();
+    updateTrackBadge();
+    switchTab(1);
+    showToast(`Found ${tracks.length} tracks`, 'success');
+
+  } catch(err) {
+    showToast('Parse failed: ' + (err.message || 'Unknown error'), 'error');
+    console.error(err);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Parse Setlist';
+}
+
+function parseTextFallback(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+  const tracks = [];
+  for (const line of lines) {
+    const cleaned = line
+      .replace(/^\d+[\.\):\-]\s*/, '')
+      .replace(/^\[\d+:\d+\]\s*/, '')
+      .replace(/\d+:\d+\s*[-–]\s*\d+:\d+/, '')
+      .trim();
+    if (cleaned.length > 3 && cleaned.length < 200) tracks.push(cleaned);
+  }
+  return [...new Set(tracks)];
+}
+
+function renderTracks() {
+  const list = document.getElementById('track-list');
+  const statsCard = document.getElementById('track-stats-card');
+  const searchBtn = document.getElementById('search-btn');
+
+  if (STATE.tracks.length === 0) {
+    list.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13M9 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm12-2c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z"/></svg><p>No tracks yet</p></div>';
+    statsCard.style.display = 'none';
+    searchBtn.style.display = 'none';
+    return;
+  }
+
+  statsCard.style.display = 'block';
+  searchBtn.style.display = 'block';
+
+  document.getElementById('stat-total').textContent = STATE.tracks.length;
+  document.getElementById('stat-matched').textContent = Object.keys(STATE.matches).length;
+  document.getElementById('stat-pending').textContent = STATE.tracks.length - Object.keys(STATE.matches).length;
+
+  list.innerHTML = STATE.tracks.map((t, i) => `
+    <div class="track-item" id="titem-${i}">
+      <div class="track-num">${i+1}</div>
+      <div class="track-info">
+        <input type="text" value="${escHtml(t.name)}" onchange="STATE.tracks[${i}].name=this.value" placeholder="Artist - Track">
+        <div class="track-sub">tap to edit</div>
+      </div>
+      <button class="track-del" onclick="removeTrack(${i})">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  `).join('');
+}
+
+function removeTrack(i) {
+  STATE.tracks.splice(i, 1);
+  delete STATE.matches[i];
+  const newMatches = {};
+  Object.keys(STATE.matches).forEach(k => {
+    const ki = parseInt(k);
+    if (ki > i) newMatches[ki-1] = STATE.matches[k];
+    else if (ki < i) newMatches[ki] = STATE.matches[k];
+  });
+  STATE.matches = newMatches;
+  renderTracks();
+  updateTrackBadge();
+}
+
+function updateTrackBadge() {
+  const badge = document.getElementById('track-badge');
+  const n = STATE.tracks.length;
+  badge.textContent = n;
+  badge.style.display = n > 0 ? 'inline' : 'none';
+}
+
+async function searchAllTracks() {
+  if (!hasCreds()) { openSettings(); return; }
+  if (STATE.tracks.length === 0) { showToast('No tracks to search', 'error'); return; }
+  if (STATE.searching) return;
+
+  STATE.searching = true;
+  STATE.matches = {};
+
+  switchTab(2);
+
+  const list = document.getElementById('match-list');
+  const playlistCard = document.getElementById('playlist-card');
+  playlistCard.style.display = 'none';
+
+  list.innerHTML = STATE.tracks.map((t, i) => `
+    <div class="match-item" id="mitem-${i}">
+      <div class="match-art"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13M9 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm12-2c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z"/></svg></div>
+      <div class="match-info">
+        <div class="match-title">${escHtml(t.name)}</div>
+        <div class="match-artist match-searching">searching...</div>
+      </div>
+      <div class="match-status"><div class="status-dot"><span class="spinner" style="width:14px;height:14px;margin:0"></span></div></div>
+    </div>
+  `).join('');
+
+  updateMatchStats();
+
+  const { clientId, oauth } = getCreds();
+  let done = 0;
+
+  for (let i = 0; i < STATE.tracks.length; i++) {
+    const track = STATE.tracks[i];
+    try {
+      const results = await searchSoundCloud(track.name, clientId, oauth);
+      if (results && results.length > 0) {
+        STATE.matches[i] = { results, selected: 0 };
+        renderMatchItem(i, results, 0, 'found');
+      } else {
+        renderMatchItem(i, [], 0, 'notfound');
+      }
+    } catch(e) {
+      renderMatchItem(i, [], 0, 'notfound');
+    }
+
+    done++;
+    const pct = Math.round((done / STATE.tracks.length) * 100);
+    document.getElementById('search-progress').style.width = pct + '%';
+    updateMatchStats();
+    await sleep(300);
+  }
+
+  STATE.searching = false;
+  playlistCard.style.display = 'block';
+  if (STATE.playlists.length === 0) loadPlaylists();
+  showToast('Search complete', 'success');
+}
+
+async function searchSoundCloud(query, clientId, oauth) {
+  const url = `https://api-v2.soundcloud.com/search/tracks?q=${encodeURIComponent(query)}&limit=5&client_id=${clientId}`;
+  const res = await scFetch(url);
+  if (!res.ok) throw new Error('SC search failed: ' + res.status);
+  const data = await res.json();
+  return data.collection || [];
+}
+
+function renderMatchItem(i, results, selected, status) {
+  const el = document.getElementById(`mitem-${i}`);
+  if (!el) return;
+
+  const track = STATE.tracks[i];
+  const result = results[selected];
+
+  let artHtml = `<svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13M9 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm12-2c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z"/></svg>`;
+  if (result && result.artwork_url) {
+    const artUrl = result.artwork_url.replace('large', 't50x50');
+    artHtml = `<img src="${artUrl}" alt="">`;
+  }
+
+  let titleHtml = escHtml(track.name);
+  let artistHtml = '<span style="color:var(--danger)">Not found on SoundCloud</span>';
+  let playsHtml = '';
+
+  if (result) {
+    titleHtml = escHtml(result.title);
+    artistHtml = escHtml(result.user ? result.user.username : '');
+    playsHtml = result.playback_count ? formatNum(result.playback_count) + ' plays' : '';
+  }
+
+  let statusHtml = '';
+  if (status === 'found') {
+    const canSwap = results.length > 1;
+    statusHtml = `
+      <div class="status-dot found">✓</div>
+      ${canSwap ? `<div class="status-dot swap" title="Swap result" onclick="swapResult(${i})">⇄</div>` : ''}
+    `;
+  } else if (status === 'notfound') {
+    statusHtml = `<div class="status-dot notfound">✕</div>`;
+  }
+
+  el.innerHTML = `
+    <div class="match-art">${artHtml}</div>
+    <div class="match-info">
+      <div class="match-title">${titleHtml}</div>
+      <div class="match-artist">${artistHtml}</div>
+      ${playsHtml ? `<div class="match-plays">${playsHtml}</div>` : ''}
+    </div>
+    <div class="match-status">${statusHtml}</div>
+  `;
+}
+
+function swapResult(i) {
+  const m = STATE.matches[i];
+  if (!m || m.results.length <= 1) return;
+  m.selected = (m.selected + 1) % m.results.length;
+  renderMatchItem(i, m.results, m.selected, 'found');
+  showToast(`Showing result ${m.selected + 1} of ${m.results.length}`);
+}
+
+function updateMatchStats() {
+  const found = Object.keys(STATE.matches).length;
+  const total = STATE.tracks.length;
+  const missing = STATE.tracks.filter((_, i) => {
+    const searching = document.querySelector(`#mitem-${i} .spinner`);
+    return !STATE.matches[i] && !searching;
+  }).length;
+
+  document.getElementById('mstat-found').textContent = found;
+  document.getElementById('mstat-review').textContent = total - found - missing;
+  document.getElementById('mstat-missing').textContent = missing;
+}
+
+async function loadPlaylists() {
+  const { clientId, oauth } = getCreds();
+  if (!clientId || !oauth) return;
+
+  const sel = document.getElementById('playlist-select');
+  sel.innerHTML = '<option>Loading...</option>';
+
+  try {
+    const meRes = await scFetch(`https://api-v2.soundcloud.com/me?client_id=${clientId}`);
+    const me = await meRes.json();
+    const userId = me.id;
+
+    const plRes = await scFetch(`https://api-v2.soundcloud.com/users/${userId}/playlists?client_id=${clientId}&limit=50`);
+    const plData = await plRes.json();
+    STATE.playlists = plData.collection || [];
+
+    sel.innerHTML = '<option value="">Select a playlist...</option>' +
+      STATE.playlists.map(p => `<option value="${p.id}">${escHtml(p.title)} (${p.track_count} tracks)</option>`).join('');
+
+  } catch(e) {
+    sel.innerHTML = '<option value="">Could not load playlists — check credentials</option>';
+    console.error('Playlist load failed', e);
+  }
+}
+
+async function addToPlaylist() {
+  const playlistId = document.getElementById('playlist-select').value;
+  if (!playlistId) { showToast('Select a playlist first', 'error'); return; }
+
+  const { clientId, oauth } = getCreds();
+  const btn = document.getElementById('add-btn');
+
+  const matchedTrackIds = Object.keys(STATE.matches).map(i => {
+    const m = STATE.matches[i];
+    return m.results[m.selected] ? m.results[m.selected].id : null;
+  }).filter(Boolean);
+
+  if (matchedTrackIds.length === 0) { showToast('No matched tracks to add', 'error'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Adding...';
+
+  try {
+    const playlist = STATE.playlists.find(p => p.id == playlistId);
+    const existingIds = playlist ? (playlist.tracks || []).map(t => t.id) : [];
+    const allIds = [...existingIds, ...matchedTrackIds];
+
+    const res = await scFetch(`https://api-v2.soundcloud.com/playlists/${playlistId}?client_id=${clientId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ playlist: { tracks: allIds.map(id => ({ id })) } })
+    });
+
+    if (!res.ok) throw new Error('Failed: ' + res.status);
+
+    showToast(`Added ${matchedTrackIds.length} tracks to playlist!`, 'success', 4000);
+    btn.textContent = `Added ${matchedTrackIds.length} tracks`;
+
+  } catch(e) {
+    showToast('Failed to update playlist: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Add all matched tracks to playlist';
+    console.error(e);
+  }
+}
+
+function formatNum(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+const uploadZone = document.getElementById('upload-zone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('file-input').files = dt.files;
+    handleFileUpload({ target: { files: [file] } });
+  }
+});
+
+checkCredsUI();
+if (!hasCreds()) {
+  setTimeout(() => showToast('Tap the settings icon to add credentials'), 800);
+}
+</script>
+</body>
+</html>
