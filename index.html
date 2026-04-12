@@ -711,10 +711,22 @@
       <select id="playlist-select">
         <option value="">Loading your playlists...</option>
       </select>
-      <button class="btn btn-primary" style="margin-top:10px" id="add-btn" onclick="addToPlaylist()">Add all matched tracks to playlist</button>
+      <button class="btn btn-primary" style="margin-top:10px" id="add-btn" onclick="injectToPlaylist()">Open SoundCloud &amp; Add Tracks</button>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6;text-align:center">
+        Opens SoundCloud in a new tab and adds tracks automatically
+      </div>
     </div>
   </div>
 
+</div>
+
+<div id="inject-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:300;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:100%;max-width:400px;">
+    <div style="font-size:16px;font-weight:500;margin-bottom:12px;color:var(--text)">Ready to inject tracks</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px;" id="inject-instructions"></div>
+    <button class="btn btn-primary" onclick="doInject()">Open SoundCloud &amp; Run</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeInject()">Cancel</button>
+  </div>
 </div>
 
 <div class="settings-panel" id="settings-panel" onclick="closeSettingsOutside(event)">
@@ -1170,12 +1182,15 @@ async function loadPlaylists() {
   }
 }
 
-async function addToPlaylist() {
+function closeInject() {
+  document.getElementById('inject-modal').style.display = 'none';
+}
+
+async function injectToPlaylist() {
   const playlistId = document.getElementById('playlist-select').value;
   if (!playlistId) { showToast('Select a playlist first', 'error'); return; }
 
-  const { clientId, oauth } = getCreds();
-  const btn = document.getElementById('add-btn');
+  const { clientId } = getCreds();
 
   const matchedTrackIds = Object.keys(STATE.matches).map(i => {
     const m = STATE.matches[i];
@@ -1184,35 +1199,96 @@ async function addToPlaylist() {
 
   if (matchedTrackIds.length === 0) { showToast('No matched tracks to add', 'error'); return; }
 
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Adding...';
+  const playlist = STATE.playlists.find(p => p.id == playlistId);
+  const playlistTitle = playlist ? playlist.title : 'your playlist';
+
+  const modal = document.getElementById('inject-modal');
+  const instructions = document.getElementById('inject-instructions');
+
+  instructions.innerHTML = `
+    Adding <strong style="color:var(--sc)">${matchedTrackIds.length} tracks</strong> to <strong style="color:var(--sc)">${escHtml(playlistTitle)}</strong>.<br><br>
+    When you tap the button below:<br>
+    1. SoundCloud will open in a new tab<br>
+    2. Wait for it to fully load<br>
+    3. The tracks will be added automatically<br><br>
+    <span style="color:var(--text3);font-size:11px">Keep this tab open while it runs</span>
+  `;
+
+  window._injectData = { playlistId, matchedTrackIds, clientId };
+  modal.style.display = 'flex';
+}
+
+async function doInject() {
+  const { playlistId, matchedTrackIds, clientId } = window._injectData;
+  const { oauth } = getCreds();
+
+  closeInject();
+
+  const script = `
+(async function() {
+  const clientId = '${clientId}';
+  const oauth = '${oauth}';
+  const playlistId = ${playlistId};
+  const newIds = ${JSON.stringify(matchedTrackIds)};
+
+  function toast(msg, ok) {
+    const d = document.createElement('div');
+    d.textContent = msg;
+    d.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:' + (ok ? '#1db954' : '#FF5500') + ';color:white;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:500;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 5000);
+  }
+
+  toast('DJ Setlist Loader: Fetching playlist...');
 
   try {
-    const plRes = await scFetch(`https://api-v2.soundcloud.com/playlists/${playlistId}?client_id=${clientId}&representation=compact`);
-    if (!plRes.ok) throw new Error('Could not load playlist: ' + plRes.status);
+    const plRes = await fetch('https://api-v2.soundcloud.com/playlists/' + playlistId + '?client_id=' + clientId + '&representation=compact', {
+      headers: { 'Authorization': 'OAuth ' + oauth }
+    });
     const plData = await plRes.json();
-    const existingIds = (plData.tracks || []).map(t => typeof t === 'object' ? t.id : t);
-    const allIds = [...existingIds, ...matchedTrackIds];
+    const existingIds = (plData.tracks || []).map(t => t.id || t);
+    const allIds = [...existingIds, ...newIds];
 
-    const putRes = await scFetch(`https://api-v2.soundcloud.com/playlists/${playlistId}?client_id=${clientId}`, {
+    toast('DJ Setlist Loader: Adding ' + newIds.length + ' tracks...');
+
+    const putRes = await fetch('https://api-v2.soundcloud.com/playlists/' + playlistId + '?client_id=' + clientId + '&app_version=' + Date.now() + '&app_locale=en', {
       method: 'PUT',
+      headers: {
+        'Authorization': 'OAuth ' + oauth,
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({ playlist: { tracks: allIds.map(id => ({ id })) } })
     });
 
-    if (!putRes.ok) {
-      const errText = await putRes.text();
-      throw new Error('Failed: ' + putRes.status + ' — ' + errText.substring(0, 150));
+    if (putRes.ok) {
+      toast('Done! Added ' + newIds.length + ' tracks to playlist', true);
+    } else {
+      const err = await putRes.text();
+      toast('Error ' + putRes.status + ': ' + err.substring(0, 80));
     }
-
-    showToast(`Added ${matchedTrackIds.length} tracks to playlist!`, 'success', 4000);
-    btn.textContent = `Added ${matchedTrackIds.length} tracks`;
-
   } catch(e) {
-    showToast('Failed to update playlist: ' + e.message, 'error');
-    btn.disabled = false;
-    btn.textContent = 'Add all matched tracks to playlist';
-    console.error(e);
+    toast('Error: ' + e.message);
   }
+})();
+  `.trim();
+
+  const encoded = encodeURIComponent(script);
+  const bookmarklet = 'javascript:' + encoded;
+
+  const win = window.open('https://soundcloud.com', '_blank');
+
+  showToast('SoundCloud opening — tap the button below when loaded!', '', 8000);
+
+  const btn = document.getElementById('add-btn');
+  btn.textContent = 'Tap to run on SoundCloud';
+  btn.onclick = () => {
+    win.location.href = bookmarklet;
+    btn.textContent = 'Running...';
+    setTimeout(() => {
+      btn.textContent = 'Open SoundCloud & Add Tracks';
+      btn.onclick = injectToPlaylist;
+    }, 5000);
+  };
 }
 
 function formatNum(n) {
