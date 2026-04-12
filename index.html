@@ -1176,7 +1176,11 @@ async function addToPlaylist() {
       body: JSON.stringify({ playlist: { tracks: allIds.map(id => ({ id })) } })
     });
 
-    if (!putRes.ok) throw new Error('Failed: ' + putRes.status);
+    if (!putRes.ok) {
+      const errText = await putRes.text();
+      console.error('SC response:', errText);
+      throw new Error('Failed: ' + putRes.status + ' — ' + errText.substring(0, 100));
+    }
 
     showToast(`Added ${matchedTrackIds.length} tracks to playlist!`, 'success', 4000);
     btn.textContent = `Added ${matchedTrackIds.length} tracks`;
