@@ -860,8 +860,7 @@ async function claudeFetch(payload) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-SC-Auth': `Bearer ${claude}`,
-      'x-api-key': claude,
+      'X-Claude-Key': claude,
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify(payload)
