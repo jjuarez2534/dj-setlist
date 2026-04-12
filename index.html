@@ -735,12 +735,22 @@
     </div>
 
     <div class="field">
-      <label>Claude API Key</label>
-      <input type="password" id="cred-claude" placeholder="sk-ant-...">
-      <div class="field-help">From console.anthropic.com — used to read screenshots and parse messy text</div>
+      <label>Datadome Cookie</label>
+      <input type="password" id="cred-datadome" placeholder="datadome cookie value">
+      <div class="field-help">From browser cookies: Application → Cookies → soundcloud.com → datadome</div>
     </div>
 
-    <div class="how-to">
+    <div class="field">
+      <label>SC Anonymous ID</label>
+      <input type="text" id="cred-scid" placeholder="sc_anonymous_id cookie value">
+      <div class="field-help">From browser cookies: sc_anonymous_id value</div>
+    </div>
+
+    <div class="field">
+      <label>Claude API Key</label>
+      <input type="password" id="cred-claude" placeholder="sk-ant-...">
+      <div class="field-help">From console.anthropic.com — used to read screenshots</div>
+    </div>
       <p>
         <strong>How to get Client ID + OAuth token:</strong><br>
         1. Open soundcloud.com in Chrome on your laptop<br>
@@ -763,10 +773,15 @@
 const PROXY = 'https://white-cell-c418.jjuarez2534.workers.dev';
 
 function scFetch(scUrl, opts = {}) {
-  const { oauth, clientId } = getCreds();
+  const { oauth, clientId, datadome, scid } = getCreds();
   const proxied = `${PROXY}?url=${encodeURIComponent(scUrl)}`;
   const headers = { 'Content-Type': 'application/json' };
   if (oauth) headers['X-SC-Auth'] = `OAuth ${oauth}`;
+  const cookieParts = [];
+  if (datadome) cookieParts.push(`datadome=${datadome}`);
+  if (scid) cookieParts.push(`sc_anonymous_id=${scid}`);
+  if (oauth) cookieParts.push(`oauth_token=${oauth}`);
+  if (cookieParts.length) headers['X-SC-Cookie'] = cookieParts.join('; ');
   return fetch(proxied, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
 }
 
@@ -781,7 +796,9 @@ function getCreds() {
   return {
     clientId: localStorage.getItem('sc_client_id') || '',
     oauth: localStorage.getItem('sc_oauth') || '',
-    claude: localStorage.getItem('claude_key') || ''
+    claude: localStorage.getItem('claude_key') || '',
+    datadome: localStorage.getItem('sc_datadome') || '',
+    scid: localStorage.getItem('sc_anon_id') || ''
   };
 }
 
@@ -808,6 +825,8 @@ function openSettings() {
   document.getElementById('cred-client-id').value = c.clientId;
   document.getElementById('cred-oauth').value = c.oauth;
   document.getElementById('cred-claude').value = c.claude;
+  document.getElementById('cred-datadome').value = c.datadome;
+  document.getElementById('cred-scid').value = c.scid;
   document.getElementById('settings-panel').classList.add('open');
 }
 
@@ -823,10 +842,14 @@ function saveCredentials() {
   const clientId = document.getElementById('cred-client-id').value.trim();
   const oauth = document.getElementById('cred-oauth').value.trim();
   const claude = document.getElementById('cred-claude').value.trim();
+  const datadome = document.getElementById('cred-datadome').value.trim();
+  const scid = document.getElementById('cred-scid').value.trim();
   if (!clientId || !oauth) { showToast('Client ID and OAuth token are required', 'error'); return; }
   localStorage.setItem('sc_client_id', clientId);
   localStorage.setItem('sc_oauth', oauth.replace('OAuth ', ''));
   if (claude) localStorage.setItem('claude_key', claude);
+  if (datadome) localStorage.setItem('sc_datadome', datadome);
+  if (scid) localStorage.setItem('sc_anon_id', scid);
   closeSettings();
   showToast('Credentials saved', 'success');
   checkCredsUI();
