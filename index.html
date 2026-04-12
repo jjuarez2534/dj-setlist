@@ -1194,22 +1194,14 @@ async function addToPlaylist() {
     const existingIds = (plData.tracks || []).map(t => typeof t === 'object' ? t.id : t);
     const allIds = [...existingIds, ...matchedTrackIds];
 
-    const putUrl = `https://api-v2.soundcloud.com/playlists/${playlistId}?client_id=${clientId}&app_version=${Date.now()}`;
-    
-    const putRes = await fetch(putUrl, {
+    const putRes = await scFetch(`https://api-v2.soundcloud.com/playlists/${playlistId}?client_id=${clientId}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `OAuth ${oauth}`,
-        'Origin': 'https://soundcloud.com',
-        'Referer': 'https://soundcloud.com/'
-      },
       body: JSON.stringify({ playlist: { tracks: allIds.map(id => ({ id })) } })
     });
 
     if (!putRes.ok) {
       const errText = await putRes.text();
-      throw new Error('Failed: ' + putRes.status + ' — ' + errText.substring(0, 100));
+      throw new Error('Failed: ' + putRes.status + ' — ' + errText.substring(0, 150));
     }
 
     showToast(`Added ${matchedTrackIds.length} tracks to playlist!`, 'success', 4000);
