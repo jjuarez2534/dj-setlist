@@ -1174,7 +1174,7 @@ async function addToPlaylist() {
   const playlistId = document.getElementById('playlist-select').value;
   if (!playlistId) { showToast('Select a playlist first', 'error'); return; }
 
-  const { clientId } = getCreds();
+  const { clientId, oauth } = getCreds();
   const btn = document.getElementById('add-btn');
 
   const matchedTrackIds = Object.keys(STATE.matches).map(i => {
@@ -1194,14 +1194,21 @@ async function addToPlaylist() {
     const existingIds = (plData.tracks || []).map(t => typeof t === 'object' ? t.id : t);
     const allIds = [...existingIds, ...matchedTrackIds];
 
-    const putRes = await scFetch(`https://api-v2.soundcloud.com/playlists/${playlistId}?client_id=${clientId}`, {
+    const putUrl = `https://api-v2.soundcloud.com/playlists/${playlistId}?client_id=${clientId}&app_version=${Date.now()}`;
+    
+    const putRes = await fetch(putUrl, {
       method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `OAuth ${oauth}`,
+        'Origin': 'https://soundcloud.com',
+        'Referer': 'https://soundcloud.com/'
+      },
       body: JSON.stringify({ playlist: { tracks: allIds.map(id => ({ id })) } })
     });
 
     if (!putRes.ok) {
       const errText = await putRes.text();
-      console.error('SC response:', errText);
       throw new Error('Failed: ' + putRes.status + ' — ' + errText.substring(0, 100));
     }
 
