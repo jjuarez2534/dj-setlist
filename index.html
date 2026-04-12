@@ -1214,44 +1214,29 @@ async function addToSoundCloud() {
     const newIds = matchedTrackIds.map(id => ({ id }));
     const allIds = [...existingIds, ...newIds];
 
-    const payload = {
-      playlistId,
-      clientId,
-      oauth,
-      tracks: allIds
-    };
+    const job = { playlistId, clientId, oauth, tracks: allIds, count: matchedTrackIds.length };
 
-    const encoded = btoa(JSON.stringify(payload));
-    const jobUrl = `${PROXY}?url=${encodeURIComponent('https://api-v2.soundcloud.com/playlists/' + playlistId + '?client_id=' + clientId)}&job=${encodeURIComponent(encoded)}`;
+    const saveRes = await fetch(`${PROXY}/save-job`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(job)
+    });
 
-    const script = `javascript:(function(){
-var d=atob('${encoded}');
-var p=JSON.parse(d);
-function t(m,ok){var el=document.createElement('div');el.textContent=m;el.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:'+(ok?'#1db954':'#FF5500')+';color:#fff;padding:14px 24px;border-radius:12px;font-size:14px;font-weight:500;z-index:99999;max-width:90vw;text-align:center';document.body.appendChild(el);setTimeout(function(){el.remove()},5000);}
-t('Adding ${matchedTrackIds.length} tracks to playlist...');
-fetch('https://api-v2.soundcloud.com/playlists/'+p.playlistId+'?client_id='+p.clientId+'&app_version=1775786406&app_locale=en',{method:'PUT',headers:{'Authorization':'OAuth '+p.oauth,'Content-Type':'application/json'},body:JSON.stringify({playlist:{tracks:p.tracks}})})
-.then(function(r){if(r.ok){t('Done! Added ${matchedTrackIds.length} tracks!',true);}else{r.text().then(function(e){t('Error '+r.status+': '+e.substring(0,80));});}})
-.catch(function(e){t('Error: '+e.message);});
-})();`;
-
-    window._scScript = script;
+    if (!saveRes.ok) throw new Error('Could not save job');
 
     const instructions = document.getElementById('add-instructions');
     const instrText = document.getElementById('add-instructions-text');
     instrText.innerHTML = `
-      <strong style="color:var(--text)">One-time setup</strong> (first time only):<br>
-      On laptop: Bookmark Manager → SC Inject → Edit URL → paste script below → Save<br><br>
-      <strong style="color:var(--text)">Every time after:</strong><br>
-      1. Tap "Open SoundCloud" below<br>
-      2. Tap address bar → type <strong style="color:var(--sc)">SC Inject</strong> → tap it<br>
-      3. Tracks added! ✅<br><br>
-      <span style="color:var(--text3);font-size:10px">Script auto-copied to clipboard</span>
+      <strong style="color:var(--sc)">${matchedTrackIds.length} tracks</strong> ready to add!<br><br>
+      1. Tap <strong style="color:var(--text)">"Open SoundCloud"</strong> below<br>
+      2. When SoundCloud loads, tap the address bar<br>
+      3. Type <strong style="color:var(--sc)">SC Inject</strong> → tap it<br>
+      4. Tracks added automatically! ✅
     `;
-
-    navigator.clipboard.writeText(script).catch(() => {});
     instructions.style.display = 'block';
     btn.disabled = false;
-    btn.textContent = 'Re-copy Script';
+    btn.textContent = 'Re-send to SoundCloud';
+    showToast('Job saved! Now open SoundCloud', 'success');
 
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
