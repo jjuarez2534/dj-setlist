@@ -875,15 +875,20 @@ async function parseSetlist() {
 
   if (!text && !hasImage) { showToast('Add a screenshot or paste some text first', 'error'); return; }
 
-  const claude = getCreds().claude;
-
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Parsing...';
 
   try {
     let tracks = [];
 
-    if (hasImage && claude) {
+    if (hasImage) {
+      const claude = getCreds().claude;
+      if (!claude) {
+        showToast('Add Claude API key in settings to read screenshots', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Parse Setlist';
+        return;
+      }
       const content = [];
       content.push({ type: 'image', source: { type: 'base64', media_type: window._uploadedMime || 'image/png', data: window._uploadedImageData }});
       content.push({ type: 'text', text: 'This is a DJ setlist image. Extract every track. Return ONLY a JSON array of strings in format "Artist - Track Title". No extra text, no markdown, just the raw JSON array.' });
@@ -892,16 +897,16 @@ async function parseSetlist() {
       if (data.error) throw new Error(data.error.message);
       const raw = data.content[0].text.trim().replace(/```json|```/g, '').trim();
       tracks = JSON.parse(raw);
-    } else if (hasImage && !claude) {
-      showToast('Add Claude API key in settings to read screenshots', 'error');
-      btn.disabled = false;
-      btn.textContent = 'Parse Setlist';
-      return;
     } else {
       tracks = parseTextFallback(text);
     }
 
-    if (!tracks || tracks.length === 0) throw new Error('No tracks found');
+    if (!tracks || tracks.length === 0) {
+      showToast('No tracks found — try a different format', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Parse Setlist';
+      return;
+    }
 
     STATE.tracks = tracks.map((t, i) => ({ id: i, name: t, original: t }));
     STATE.matches = {};
@@ -911,7 +916,7 @@ async function parseSetlist() {
     showToast(`Found ${tracks.length} tracks`, 'success');
 
   } catch(err) {
-    showToast('Parse failed: ' + (err.message || 'Unknown error'), 'error');
+    showToast('Error: ' + (err.message || 'Unknown'), 'error');
     console.error(err);
   }
 
@@ -1162,12 +1167,12 @@ async function addToPlaylist() {
 
   try {
     const playlist = STATE.playlists.find(p => p.id == playlistId);
-    const existingIds = playlist ? (playlist.tracks || []).map(t => t.id) : [];
+    const existingIds = playlist ? (playlist.tracks || []).map(t => t.id || t) : [];
     const allIds = [...existingIds, ...matchedTrackIds];
 
     const res = await scFetch(`https://api-v2.soundcloud.com/playlists/${playlistId}?client_id=${clientId}`, {
       method: 'PUT',
-      body: JSON.stringify({ playlist: { tracks: allIds.map(id => ({ id })) } })
+      body: JSON.stringify({ playlist: { tracks: allIds } })
     });
 
     if (!res.ok) throw new Error('Failed: ' + res.status);
