@@ -877,6 +877,8 @@ function loginSoundCloud() {
     window.open('https://soundcloud.com/signin', '_blank');
   }
 }
+
+function checkCredsUI() {
   const banner = document.getElementById('no-creds-banner');
   banner.style.display = hasCreds() ? 'none' : 'flex';
 }
