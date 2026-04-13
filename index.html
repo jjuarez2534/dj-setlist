@@ -776,6 +776,7 @@
     </div>
 
     <button class="btn btn-primary" style="margin-top:16px" onclick="saveCredentials()">Save credentials</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="loginSoundCloud()">Login to SoundCloud</button>
     <button class="btn btn-secondary" style="margin-top:8px" onclick="closeSettings()">Cancel</button>
   </div>
 </div>
@@ -868,7 +869,14 @@ function saveCredentials() {
   checkCredsUI();
 }
 
-function checkCredsUI() {
+function loginSoundCloud() {
+  closeSettings();
+  if (window.AndroidBridge) {
+    window.AndroidBridge.openSoundCloudLogin();
+  } else {
+    window.open('https://soundcloud.com/signin', '_blank');
+  }
+}
   const banner = document.getElementById('no-creds-banner');
   banner.style.display = hasCreds() ? 'none' : 'flex';
 }
