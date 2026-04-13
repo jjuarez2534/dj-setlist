@@ -1247,27 +1247,33 @@ async function addToSoundCloud() {
 
     if (!saveRes.ok) throw new Error('Could not save job');
 
-    if (window.AndroidBridge) {
-      showToast('Starting auto-add...', 'success');
-      btn.disabled = false;
-      btn.textContent = 'Add to SoundCloud Playlist';
-      window.AndroidBridge.startProcessing(JSON.stringify(trackUrls), playlistTitle);
-      return;
-    }
-
-    const instructions = document.getElementById('add-instructions');
-    const instrText = document.getElementById('add-instructions-text');
-    instrText.innerHTML = `
-      <strong style="color:var(--sc)">${matchedTracks.length} tracks</strong> ready to add!<br><br>
-      1. Tap <strong style="color:var(--text)">"Open SoundCloud"</strong> below<br>
-      2. When SoundCloud loads, tap the address bar<br>
-      3. Type <strong style="color:var(--sc)">SC Inject</strong> → tap it<br>
-      4. Tracks added automatically! ✅
-    `;
-    instructions.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = 'Re-send to SoundCloud';
-    showToast('Job saved! Now open SoundCloud', 'success');
+    const tryAndroidBridge = (attempts) => {
+      if (window.AndroidBridge) {
+        showToast('Starting auto-add...', 'success');
+        btn.disabled = false;
+        btn.textContent = 'Add to SoundCloud Playlist';
+        window.AndroidBridge.startProcessing(JSON.stringify(trackUrls), playlistTitle);
+        return;
+      }
+      if (attempts > 0) {
+        setTimeout(() => tryAndroidBridge(attempts - 1), 300);
+      } else {
+        const instructions = document.getElementById('add-instructions');
+        const instrText = document.getElementById('add-instructions-text');
+        instrText.innerHTML = `
+          <strong style="color:var(--sc)">${matchedTracks.length} tracks</strong> ready to add!<br><br>
+          1. Tap <strong style="color:var(--text)">"Open SoundCloud"</strong> below<br>
+          2. When SoundCloud loads, tap the address bar<br>
+          3. Type <strong style="color:var(--sc)">SC Inject</strong> → tap it<br>
+          4. Tracks added automatically! ✅
+        `;
+        instructions.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Re-send to SoundCloud';
+        showToast('Job saved! Now open SoundCloud', 'success');
+      }
+    };
+    tryAndroidBridge(5);
 
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
