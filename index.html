@@ -1196,25 +1196,38 @@ async function addToSoundCloud() {
   const { clientId, oauth } = getCreds();
   const btn = document.getElementById('add-btn');
 
-  const matchedTrackIds = Object.keys(STATE.matches).map(i => {
+  const matchedTracks = Object.keys(STATE.matches).map(i => {
     const m = STATE.matches[i];
-    return m.results[m.selected] ? m.results[m.selected].id : null;
+    const result = m.results[m.selected];
+    return result ? { id: result.id, url: result.permalink_url } : null;
   }).filter(Boolean);
 
-  if (matchedTrackIds.length === 0) { showToast('No matched tracks found', 'error'); return; }
+  if (matchedTracks.length === 0) { showToast('No matched tracks found', 'error'); return; }
+
+  const playlist = STATE.playlists.find(p => p.id == playlistId);
+  const playlistTitle = playlist ? playlist.title : '';
 
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Preparing...';
 
   try {
-    const plRes = await scFetch(`https://api-v2.soundcloud.com/playlists/${playlistId}?client_id=${clientId}&representation=compact`);
-    if (!plRes.ok) throw new Error('Could not load playlist: ' + plRes.status);
-    const plData = await plRes.json();
-    const existingIds = (plData.tracks || []).map(t => ({ id: typeof t === 'object' ? t.id : t }));
-    const newIds = matchedTrackIds.map(id => ({ id }));
-    const allIds = [...existingIds, ...newIds];
+    const trackUrls = matchedTracks.map(t => t.url).filter(Boolean);
+    const matchedTrackIds = matchedTracks.map(t => ({ id: t.id }));
 
-    const job = { playlistId, clientId, oauth, tracks: allIds, count: matchedTrackIds.length };
+    const plRes = await scFetch(`https://api-v2.soundcloud.com/playlists/${playlistId}?client_id=${clientId}&representation=compact`);
+    const plData = plRes.ok ? await plRes.json() : { tracks: [] };
+    const existingIds = (plData.tracks || []).map(t => ({ id: typeof t === 'object' ? t.id : t }));
+    const allIds = [...existingIds, ...matchedTrackIds];
+
+    const job = {
+      playlistId,
+      clientId,
+      oauth,
+      tracks: allIds,
+      trackUrls,
+      playlistTitle,
+      count: matchedTracks.length
+    };
 
     const saveRes = await fetch(`${PROXY}/save-job`, {
       method: 'POST',
@@ -1224,10 +1237,18 @@ async function addToSoundCloud() {
 
     if (!saveRes.ok) throw new Error('Could not save job');
 
+    if (window.AndroidBridge) {
+      showToast('Starting auto-add...', 'success');
+      btn.disabled = false;
+      btn.textContent = 'Add to SoundCloud Playlist';
+      window.AndroidBridge.startProcessing(JSON.stringify(trackUrls), playlistTitle);
+      return;
+    }
+
     const instructions = document.getElementById('add-instructions');
     const instrText = document.getElementById('add-instructions-text');
     instrText.innerHTML = `
-      <strong style="color:var(--sc)">${matchedTrackIds.length} tracks</strong> ready to add!<br><br>
+      <strong style="color:var(--sc)">${matchedTracks.length} tracks</strong> ready to add!<br><br>
       1. Tap <strong style="color:var(--text)">"Open SoundCloud"</strong> below<br>
       2. When SoundCloud loads, tap the address bar<br>
       3. Type <strong style="color:var(--sc)">SC Inject</strong> → tap it<br>
